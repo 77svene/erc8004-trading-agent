@@ -1,184 +1,123 @@
-// SPDX-License-Identifier: MIT
 pragma solidity ^0.8.24;
 
-import "@openzeppelin/contracts/token/ERC721/ERC721.sol";
+import "@openzeppelin/contracts/token/ERC721/extensions/ERC721URIStorage.sol";
+import "@openzeppelin/contracts/access/Ownable.sol";
 
-/**
- * @title CapabilityRegistry
- * @dev ERC-721 token that represents a trading strategy capability as per ERC-8004.
- *      Each token encodes a strategyId, modelHash, permitted pairs, and maxSlippage.
- */
-contract CapabilityRegistry is ERC721 {
-    // Struct to hold the capability data for a token
-    struct Capability {
-        string strategyId;
+contract CapabilityRegistry is ERC721URIStorage, Ownable {
+    // Struct to hold strategy details
+    struct Strategy {
+        bytes32 strategyId;
         bytes32 modelHash;
-        address[] permittedToken0;  // Array of token0 addresses for each pair
-        address[] permittedToken1;  // Array of token1 addresses for each pair (same length as permittedToken0)
-        uint256 maxSlippage;        // In basis points (e.g., 100 = 1%)
+        address[] permittedPairs;
+        uint256 maxSlippage;
     }
 
-    // Mapping from tokenId to its capability data
-    mapping(uint256 => Capability) private _capabilities;
+    // Mapping from tokenId to strategy details
+    mapping(uint256 => Strategy) private _strategies;
+    // Mapping from strategyId to tokenId (to enforce uniqueness and enable lookup)
+    mapping(bytes32 => uint256) private _strategyIdToTokenId;
+    // Mapping from tokenId to strategyId (for burning cleanup)
+    mapping(uint256 => bytes32) private _tokenIdToStrategyId;
+    // Counter for token IDs
+    uint256 private _tokenCounter;
 
-    /**
-     * @dev Emitted when a capability is minted.
-     * @param tokenId The ID of the minted token
-     * @param strategyId The strategy identifier
-     * @param modelHash The hash of the model used
-     * @param permittedToken0 Array of token0 addresses for permitted pairs
-     * @param permittedToken1 Array of token1 addresses for permitted pairs
-     * @param maxSlippage The maximum slippage allowed (basis points)
-     */
-    event CapabilityMinted(
-        uint256 indexed tokenId,
-        string strategyId,
-        bytes32 modelHash,
-        address[] permittedToken0,
-        address[] permittedToken1,
-        uint256 maxSlippage
-    );
+    // Events
+    event StrategyCapabilityMinted(uint256 indexed tokenId, bytes32 strategyId);
+    event StrategyCapabilityBurned(uint256 indexed tokenId, bytes32 strategyId);
 
-    /**
-     * @dev Emitted when a capability is burned.
-     * @param tokenId The ID of the burned token
-     */
-    event CapabilityBurned(uint256 indexed tokenId);
+    constructor() ERC721("Capability Registry", "CAP") {
+        _tokenCounter = 1;
+    }
 
-    /**
-     * @dev Mints a new capability token.
-     * @param to The address that will receive the minted token
-     * @param strategyId The strategy identifier
-     * @param modelHash The hash of the model used
-     * @param permittedToken0 Array of token0 addresses for permitted pairs
-     * @param permittedToken1 Array of token1 addresses for permitted pairs (must same length as permittedToken0)
-     * @param maxSlippage The maximum slippage allowed (basis points)
-     * @return tokenId The ID of the newly minted token
-     */
+    /// @dev Mints a new capability token representing a trading strategy.
+    /// @param to The address that will receive the minted token.
+    /// @param strategyId Unique identifier for the strategy.
+    /// @param modelHash Hash of the off-chain model used.
+    /// @param permittedPairs Array of token pair addresses the strategy is allowed to trade.
+    /// @param maxSlippage Maximum slippage allowed (in basis points).
+    /// @return tokenId The ID of the newly minted token.
     function mintCapability(
         address to,
-        string calldata strategyId,
+        bytes32 strategyId,
         bytes32 modelHash,
-        address[] calldata permittedToken0,
-        address[] calldata permittedToken1,
+        address[] memory permittedPairs,
         uint256 maxSlippage
-    ) public returns (uint256) {
-        require(permittedToken0.length == permittedToken1.length, "Pairs length mismatch");
-        uint256 tokenId = _nextTokenId();
+    ) public onlyOwner returns (uint256) {
+        require(_strategyIdToTokenId[strategyId] == 0, "Strategy ID already exists");
+        uint256 tokenId = _tokenCounter++;
         _safeMint(to, tokenId);
-        _capabilities[tokenId] = Capability({
-            strategyId: strategyId,
-            modelHash: modelHash,
-            permittedToken0: permittedToken0,
-            permittedToken1: permittedToken1,
-            maxSlippage: maxSlippage
-        });
-        emit CapabilityMinted(tokenId, strategyId, modelHash, permittedToken0, permittedToken1, maxSlippage);
+        // Set token URI (placeholder)
+        _setTokenURI(tokenId, "ipfs://placeholder/");
+        // Store strategy details
+        _strategies[tokenId] = Strategy(strategyId, modelHash, permittedPairs, maxSlippage);
+        _strategyIdToTokenId[strategyId] = tokenId;
+        _tokenIdToStrategyId[tokenId] = strategyId;
+        emit StrategyCapabilityMinted(tokenId, strategyId);
         return tokenId;
     }
 
-    /**
-     * @dev Burns the capability token, destroying it.
-     * @param tokenId The ID of the token to burn
-     */
-    function burnCapability(uint256 tokenId) public {
-        require(_exists(tokenId), "ERC721: burn nonexistent token");
+    /// @dev Burns a capability token, destroying the strategy association.
+    /// @param tokenId The ID of the token to burn.
+    function burnCapability(uint256 tokenId) public onlyOwner {
+        require(_exists(tokenId), "Token does not exist");
+        bytes32 strategyId = _tokenIdToStrategyId[tokenId];
         _burn(tokenId);
-        delete _capabilities[tokenId];
-        emit CapabilityBurned(tokenId);
+        delete _strategies[tokenId];
+        delete _strategyIdToTokenId[strategyId];
+        delete _tokenIdToStrategyId[tokenId];
+        emit StrategyCapabilityBurned(tokenId, strategyId);
     }
 
-    /**
-     * @dev Verifies if the given tokenId matches the provided capability parameters.
-     * @param tokenId The ID of the token to verify
-     * @param strategyId The strategy identifier to check against
-     * @param modelHash The model hash to check against
-     * @param permittedToken0 Array of token0 addresses for permitted pairs to check against
-     * @param permittedToken1 Array of token1 addresses for permitted pairs to check against
-     * @param maxSlippage The maximum slippage allowed (basis points) to check against
-     * @return true if the tokenId exists and all fields match exactly, false otherwise
-     */
-    function verifyCapability(
-        uint256 tokenId,
-        string calldata strategyId,
-        bytes32 modelHash,
-        address[] calldata permittedToken0,
-        address[] calldata permittedToken1,
-        uint256 maxSlippage
-    ) public view returns (bool) {
+    /// @dev Returns the strategy details associated with a token ID.
+    /// @param tokenId The ID of the token to query.
+    /// @return strategyId The strategy identifier.
+    /// @return modelHash The hash of the model used.
+    /// @return permittedPairs The array of permitted token pairs.
+    /// @return maxSlippage The maximum slippage allowed (in basis points).
+    function capabilityInfo(uint256 tokenId)
+        public
+        view
+        returns (bytes32 strategyId, bytes32 modelHash, address[] memory permittedPairs, uint256 maxSlippage)
+    {
+        require(_exists(tokenId), "Token does not exist");
+        Strategy memory s = _strategies[tokenId];
+        return (s.strategyId, s.modelHash, s.permittedPairs, s.maxSlippage);
+    }
+
+    /// @dev Checks if a caller is authorized to use a strategy on a target contract.
+    /// @param caller The address of the caller attempting to execute the strategy.
+    /// @param strategyId The strategy identifier to check authorization for.
+    /// @param target The target contract address (e.g., a Uniswap pool or router).
+    /// @return true if the caller is authorized to use the strategy on the target, false otherwise.
+    function isAuthorized(address caller, bytes32 strategyId, address target)
+        public
+        view
+        returns (bool)
+    {
+        uint256 tokenId = _strategyIdToTokenId[strategyId];
+        if (tokenId == 0) {
+            return false;
+        }
+        // Check token exists (if strategyId mapping is non-zero, token should exist unless burned, but we clean mapping on burn)
         if (!_exists(tokenId)) {
             return false;
         }
-        Capability storage cap = _capabilities[tokenId];
-        
-        // Check strategyId
-        if (keccak256(bytes(cap.strategyId)) != keccak256(bytes(strategyId))) {
+        // Check ownership
+        if (ownerOf(tokenId) != caller) {
             return false;
         }
-        // Check modelHash
-        if (cap.modelHash != modelHash) {
-            return false;
-        }
-        // Check maxSlippage
-        if (cap.maxSlippage != maxSlippage) {
-            return false;
-        }
-        // Check permittedToken0 length
-        if (cap.permittedToken0.length != permittedToken0.length) {
-            return false;
-        }
-        // Check permittedToken1 length
-        if (cap.permittedToken1.length != permittedToken1.length) {
-            return false;
-        }
-        // Check each address in permittedToken0
-        for (uint256 i = 0; i < cap.permittedToken0.length; i++) {
-            if (cap.permittedToken0[i] != permittedToken0[i]) {
-                return false;
+        // Check if target is in permittedPairs
+        Strategy memory s = _strategies[tokenId];
+        for (uint256 i = 0; i < s.permittedPairs.length; i++) {
+            if (s.permittedPairs[i] == target) {
+                return true;
             }
         }
-        // Check each address in permittedToken1
-        for (uint256 i = 0; i < cap.permittedToken1.length; i++) {
-            if (cap.permittedToken1[i] != permittedToken1[i]) {
-                return false;
-            }
-        }
-        return true;
+        return false;
     }
 
-    /**
-     * @dev Returns the capability data for a given tokenId.
-     * @param tokenId The ID of the token to query
-     * @return strategyId The strategy identifier
-     * @return modelHash The hash of the model used
-     * @return permittedToken0 Array of token0 addresses for permitted pairs
-     * @return permittedToken1 Array of token1 addresses for permitted pairs
-     * @return maxSlippage The maximum slippage allowed (basis points)
-     */
-    function getCapability(uint256 tokenId)
-        public
-        view
-        returns (
-            string memory strategyId,
-            bytes32 modelHash,
-            address[] memory permittedToken0,
-            address[] memory permittedToken1,
-            uint256 maxSlippage
-        )
-    {
-        require(_exists(tokenId), "ERC721: nonexistent token");
-        Capability storage cap = _capabilities[tokenId];
-        return (cap.strategyId, cap.modelHash, cap.permittedToken0, cap.permittedToken1, cap.maxSlippage);
-    }
-
-    // The following functions are overrides required by ERC721.
-
-    function supportsInterface(bytes4 interfaceId)
-        public
-        view
-        override(ERC721)
-        returns (bool)
-    {
-        return super.supportsInterface(interfaceId);
+    // Helper to check if a token exists (internal to ERC721, but we expose a public view)
+    function _exists(uint256 tokenId) internal view returns (bool) {
+        return _tokenIdToStrategyId[tokenId] != bytes32(0);
     }
 }
