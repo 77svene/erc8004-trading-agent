@@ -1,24 +1,28 @@
 {
   "name": "autotradex",
   "version": "1.0.0",
-  "description": "AutoTradeX: ERC-8004 Autonomous Trading Agent",
+  "description": "ERC-8004 Autonomous Trading Agent",
   "main": "index.js",
   "private": true,
   "engines": {
-    "node": ">=18.0.0"
+    "node": ">=18"
   },
   "scripts": {
+    "setup": "node scripts/setup.js",
+    "dashboard": "react-scripts start",
     "start": "node src/agent/index.js",
-    "dev": "react-scripts start",
-    "setup": "node -e \"const fs = require('fs'); const { execSync } = require('child_process'); const dirs = ['contracts', 'src/agent', 'src/dashboard', 'scripts']; dirs.forEach(dir => { if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true }); }); execSync('git init', { stdio: 'inherit' }); console.log('Setup complete: directories created and git initialized.');\""
+    "dev": "concurrently \"npm:start\" \"npm:dashboard\""
   },
   "dependencies": {
-    "ethers": "^6.0.0",
-    "@uniswap/v3-sdk": "^3.0.0",
-    "@graphprotocol/graph-ql": "latest",
-    "onnxruntime": "^1.0.0",
-    "dotenv": "^16.0.0",
-    "react-scripts": "^5.0.0"
+    "ethers": "^6.7.0",
+    "@uniswap/v3-sdk": "^3.9.0",
+    "@graphprotocol/graphql": "^0.8.0",
+    "onnxruntime": "^1.14.0",
+    "dotenv": "^16.3.1",
+    "react-scripts": "^5.0.1"
+  },
+  "devDependencies": {
+    "concurrently": "^8.2.0"
   }
 }
 }
