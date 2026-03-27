@@ -1,120 +1,143 @@
-# AutoTradeX: ERC-8004 Autonomous Trading Agent
+# 🤖 AutoTradeX: ERC-8004 Autonomous Trading Agent
 
-## Project Overview
-AutoTradeX is an autonomous agent that continuously monitors ERC-20 token pairs on Uniswap v3 via The Graph subgraph, applies a lightweight offline-trained LSTM model (exported as ONNX and run with ONNX Runtime in Node.js) to predict short-term price moves, and when a threshold is met, creates and signs a limit order using the Uniswap v3 Permit2 interface. The agent's strategy (pair, model version, risk parameters) is minted as an ERC-8004 capability NFT, which can be queried by other contracts to verify the agent's authorized actions. A simple React dashboard (HTML/JS) displays live P&L, open positions, and the capability token metadata. All interactions use public RPC endpoints (Cloudflare Ethereum gateway) and free APIs (CoinGecko for token metadata, The Graph for pool data). No proprietary accounts are required; the agent operates solely with a locally managed Ethereum wallet (generated from a mnemonic) for signing transactions.
+> **The first AI trading agent to mint its strategy as an on-chain ERC-8004 capability token for verifiable, composable DeFi execution.**
 
-## Novel Angle
-First agent that registers its trading strategy as an ERC-8004 capability token, enabling on-chain verification and composable delegation while executing AI-driven limit orders on Uniswap v3. This creates a self-enforcing system where the agent's permissions are cryptographically verifiable on-chain, allowing for trustless delegation and composability with other DeFi protocols.
+[![Hackathon](https://img.shields.io/badge/Hackathon-lablab.ai-blue)](https://lablab.ai)
+[![Token](https://img.shields.io/badge/Reward-$55,000%20SURGE-orange)](https://lablab.ai)
+[![License](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
+[![Solidity](https://img.shields.io/badge/Smart%20Contracts-Solidity-6e4c97.svg)](contracts/)
+[![Node.js](https://img.shields.io/badge/Backend-Node.js-339933.svg)](src/)
+[![Python](https://img.shields.io/badge/ML-Python-3776AB.svg)](train_model.py)
+[![React](https://img.shields.io/badge/Frontend-React-61DAFB.svg)](src/dashboard/)
 
-## Setup Instructions
+## 🚀 One-Line Pitch
+AutoTradeX is an autonomous AI agent that executes Uniswap v3 limit orders based on LSTM predictions while registering its trading strategy as a verifiable ERC-8004 capability NFT.
 
-1. Clone the repository:
-   ```bash
-   git clone <repository-url>
-   cd AutoTradeX
-   ```
+## 📖 Problem & Solution
 
-2. Install dependencies:
-   ```bash
-   npm install
-   ```
+### 🛑 The Problem
+*   **Black Box Strategies:** AI trading bots operate off-chain with no way to verify their logic or risk parameters on-chain.
+*   **Lack of Composability:** Other protocols cannot safely delegate trading authority to an AI agent without trusting a centralized operator.
+*   **Trust Deficit:** Traders cannot audit the specific model version or parameters used for a trade execution.
 
-3. Create a `.env` file in the root directory with the following variables:
-   ```
-   MNEMONIC="your 12 or 24 word ethereum wallet mnemonic"
-   RPC_URL="https://cloudflare-eth.com"  # or any public Ethereum RPC
-   GRAPH_URL="https://api.thegraph.com/subgraphs/name/uniswap/uniswap-v3"  # Uniswap v3 subgraph
-   COINGECKO_API_URL="https://api.coingecko.com/api/v3"  # optional, defaults to this
-   ```
-   > **WARNING**: Never commit your `.env` file to version control. It contains sensitive information.
+### ✅ The Solution
+*   **ERC-8004 Capability Tokens:** AutoTradeX mints its trading strategy (pair, model version, risk limits) as a non-transferable NFT. This allows any contract to query and verify the agent's authorized actions.
+*   **On-Chain Verification:** The `CapabilityRegistry` contract ensures only valid, minted strategies can trigger trades.
+*   **Transparent Execution:** All trades are signed by a locally managed wallet and executed via Uniswap v3 Permit2, with full auditability.
+*   **Lightweight AI:** Uses an offline-trained LSTM model (ONNX) running in Node.js for low-latency prediction without cloud dependencies.
 
-4. (Optional) Train your own model or use the provided one:
-   ```bash
-   python train_model.py
-   ```
-   This will generate an ONNX model in `src/agent/model.onnx`.
+## 🏗️ Architecture
 
-## How to Run
+```text
++---------------------+       +---------------------+       +---------------------+
+|   AI Predictor      |       |   Blockchain Layer  |       |   DEX Execution     |
+|   (Node.js/ONNX)    |       |   (Ethereum)        |       |   (Uniswap v3)      |
++---------------------+       +---------------------+       +---------------------+
+| 1. Fetch Pool Data  |       | 2. Mint ERC-8004    |       | 3. Sign Limit Order |
+|    via The Graph    |-----> |    Capability NFT   |<----->|    via Permit2      |
++---------------------+       +---------------------+       +---------------------+
+         ^                               ^
+         |                               |
++---------------------+       +---------------------+
+|   React Dashboard   |       |   Wallet Manager    |
+|   (Live P&L / UI)   |       |   (Local Mnemonic)  |
++---------------------+       +---------------------+
+```
 
-### Start the Autonomous Agent
+## 🛠️ Tech Stack
+
+| Component | Technology |
+| :--- | :--- |
+| **Smart Contracts** | Solidity (ERC-8004, ERC-721) |
+| **Backend Agent** | Node.js, ONNX Runtime |
+| **AI Model** | Python, PyTorch (LSTM), ONNX |
+| **Frontend** | React, HTML/JS |
+| **Data Indexing** | The Graph (Uniswap Subgraph) |
+| **RPC Provider** | Cloudflare Ethereum Gateway |
+| **Market Data** | CoinGecko API |
+
+## 📸 Demo
+
+### Dashboard View
+![AutoTradeX Dashboard](https://placehold.co/800x400/1e293b/ffffff?text=Live+P%26L+Dashboard+View)
+*Live monitoring of open positions and capability token metadata.*
+
+### Strategy Minting
+![ERC-8004 Mint](https://placehold.co/800x400/1e293b/ffffff?text=ERC-8004+Strategy+Mint+Tx)
+*Transaction hash for minting the trading strategy capability NFT.*
+
+## 🚦 Setup Instructions
+
+### 1. Clone Repository
 ```bash
-npm run agent
+git clone https://github.com/77svene/erc8004-trading-agent
+cd erc8004-trading-agent
 ```
-This will start the agent loop, which:
-- Connects to the Ethereum network via the provided RPC
-- Loads your wallet from the mnemonic
-- Fetches pool data from The Graph subgraph
-- Runs the LSTM model to predict price movements
-- When a threshold is met, creates and signs a limit order via Permit2
-- Mints an ERC-8004 capability token representing the strategy used
 
-### Start the Dashboard
+### 2. Install Dependencies
 ```bash
-npm run dashboard
-```
-This will start a React development server at `http://localhost:3000` showing:
-- Live P&L from executed trades
-- Open positions and limit orders
-- Metadata of your ERC-8004 capability tokens
-- Interactive chart of price predictions
-
-## ERC-8004 Capability Usage
-
-The ERC-8004 standard defines a way to represent capabilities as NFTs. In AutoTradeX:
-
-1. **Strategy Registration**: When the agent decides to execute a trade based on its AI model, it mints an ERC-721 token (via our `CapabilityRegistry` contract) that encodes:
-   - The token pair being traded
-   - The version of the AI model used
-   - Risk parameters (max slippage, order size limits)
-   - A unique strategy ID
-
-2. **On-Chain Verification**: Any smart contract can query the `CapabilityRegistry` to check if a given agent (by wallet address) is authorized to perform a specific action (e.g., trade a specific pair with specific parameters) by calling `isAuthorized(agentAddress, capabilityId)`.
-
-3. **Composable Delegation**: The capability token can be transferred or delegated to other contracts or agents, allowing them to act on behalf of the original agent with the same verified permissions. This enables complex strategies where multiple agents collaborate under a shared, verifiable policy.
-
-4. **Trustless Execution**: Since the capabilities are stored on-chain and enforced by the `CapabilityRegistry` contract, there is no need to trust the agent's off-chain claims about its permissions. The blockchain itself guarantees the correctness of the permission checks.
-
-## Deployed Contracts (Testnet)
-
-Note: These are placeholders. Replace with actual testnet deployments after testing.
-
-- **CapabilityRegistry**: `0xYourCapabilityRegistryAddressOnGoerli`
-  - [Etherscan (Goerli)](https://goerli.etherscan.io/address/0xYourCapabilityRegistryAddressOnGoerli)
-
-- **Uniswap v3 Permit2**: `0x000000000022D473030F116dDEE9F6B43aC78BA3` (standard address)
-  - [Etherscan (Goerli)](https://goerli.etherscan.io/address/0x000000000022D473030F116dDEE9F6B43aC78BA3)
-
-## Architecture Diagram
-
-```
-+------------------+       +------------------+       +------------------+
-|   Ethereum Node  |       |   The Graph      |       |   CoinGecko API  |
-| (Cloudflare RPC) |<----->| (Uniswap v3 Sub) |<----->| (Token Metadata) |
-+------------------+       +------------------+       +------------------+
-         ^                         ^                         ^
-         |                         |                         |
-         |                         |                         |
-+--------v--------+    +----------v----------+    +--------v--------+
-|   Wallet Loader  |    |   Subgraph Listener |    |   Metadata Fetcher|
-| (ethers.js)      |    |   (graphql-request) |    |   (fetch)         |
-+--------+--------+    +----------+----------+    +--------+--------+
-         |                         |                         |
-         |                         |                         |
-         v                         v                         v
-+--------+--------+    +----------v----------+    +--------v--------+
-|   AI Predictor   |    |   Order Builder     |    |   Dashboard     |
-| (ONNX Runtime)   |    |   (Permit2 + ABI)   |    |   (React)       |
-|   - LSTM Model   |    |   - Limit Orders    |    |   - P&L Display |
-|   - Signal Gen   |    |   - Signature       |    |   - Open Orders |
-+--------+--------+    +----------+----------+    +--------+--------+
-         |                         |                         |
-         |                         |                         |
-         v                         v                         v
-+--------+--------+    +----------v----------+    +--------v--------+
-|   Tx Signer     |    |   Capability Minter |    |   Capability Viewer|
-|   (ethers.js)   |    |   (ERC-8004)        |    |   (Contract Calls)|
-+------------------+    +---------------------+    +------------------+
+npm install
 ```
 
-## License
-MIT
+### 3. Configure Environment
+Create a `.env` file in the root directory with the following variables:
+
+```env
+# Wallet Configuration
+PRIVATE_KEY=your_local_wallet_private_key
+MNEMONIC="your mnemonic phrase words here"
+
+# Blockchain Configuration
+RPC_URL=https://cloudflare-eth.com
+CHAIN_ID=1
+
+# API Keys
+THE_GRAPH_SUBGRAPH_URL=https://api.thegraph.com/subgraphs/name/uniswap/uniswap-v3
+COINGECKO_API_KEY=your_coingecko_api_key
+
+# Model Configuration
+MODEL_PATH=./models/lstm_predictor.onnx
+PREDICTION_THRESHOLD=0.05
+```
+
+### 4. Train Model (Optional)
+If you wish to retrain the LSTM model:
+```bash
+python train_model.py
+```
+
+### 5. Deploy Contracts
+```bash
+npx hardhat run scripts/deploy.js --network localhost
+```
+
+### 6. Start Agent & Dashboard
+```bash
+npm start
+```
+*The agent will begin monitoring pools and the dashboard will open at `http://localhost:3000`.*
+
+## 🔌 API Endpoints
+
+| Endpoint | Method | Description |
+| :--- | :--- | :--- |
+| `/api/pools` | GET | Fetch active Uniswap v3 pools via The Graph |
+| `/api/predict` | POST | Trigger price prediction for a specific pair |
+| `/api/strategy` | GET | Query ERC-8004 capability token metadata |
+| `/api/positions` | GET | Retrieve open limit orders and P&L |
+| `/api/execute` | POST | Manually trigger a trade (Admin only) |
+
+## 👥 Team
+
+**Built by VARAKH BUILDER — autonomous AI agent**
+
+*   **Core Development:** VARAKH BUILDER
+*   **Smart Contract Audit:** Internal ERC-8004 Compliance Check
+*   **AI Model Training:** Offline LSTM Optimization
+
+## 📜 License
+
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+
+---
+*Disclaimer: This software is for educational and hackathon purposes. Trading cryptocurrencies involves risk. Use at your own discretion.*

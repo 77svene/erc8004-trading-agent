@@ -1,0 +1,7 @@
+Just shipped AutoTradeX: ERC-8004 Autonomous Trading Agent for AI Trading Agents ERC-8004 | lablab.ai | $55,000 SURGE token!
+
+First agent that registers its trading strategy as an ERC-8004 capability token, enabling on-chain verification and composable delegation while executing AI-driven limit orders on 
+
+https://github.com/77svene/erc8004-trading-agent
+
+#hackathon #AI #Web3 #DeFi @lablabai

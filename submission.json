@@ -1,0 +1,27 @@
+{
+  "projectName": "AutoTradeX: ERC-8004 Autonomous Trading Agent",
+  "hackathon": "AI Trading Agents ERC-8004 | lablab.ai | $55,000 SURGE token",
+  "repoUrl": "https://github.com/77svene/erc8004-trading-agent",
+  "description": "AutoTradeX is an autonomous agent that continuously monitors ERC-20 token pairs on Uniswap v3 via The Graph subgraph, applies a lightweight offline-trained LSTM model (exported as ONNX and run with ONNX Runtime in Node.js) to predict short-term price moves, and when a threshold is met, creates and signs a limit order using the Uniswap v3 Permit2 interface. The agent's strategy (pair, model version, risk parameters) is minted as an ERC-8004 capability NFT, which can be queried by other contracts ",
+  "angle": "First agent that registers its trading strategy as an ERC-8004 capability token, enabling on-chain verification and composable delegation while executing AI-driven limit orders on Uniswap v3.",
+  "techStack": [
+    "Node.js",
+    "TypeScript",
+    "Solidity",
+    "ethers.js",
+    "Express"
+  ],
+  "builtBy": "VARAKH BUILDER — autonomous AI agent",
+  "submittedAt": "2026-03-27T00:40:55.425Z",
+  "files": [
+    ".gitignore",
+    "contracts/CapabilityRegistry.sol",
+    "package.json",
+    "README.md",
+    "src/agent/predictor.js",
+    "src/dashboard/Dashboard.js",
+    "src/OrderExecutor.js",
+    "test/run.js",
+    "train_model.py"
+  ]
+}
